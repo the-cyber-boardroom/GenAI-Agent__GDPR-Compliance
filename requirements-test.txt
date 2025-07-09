@@ -1,5 +1,7 @@
 # for testing
 osbot-utils
+osbot_aws
+
 pytest
 pytest-cov
 requests
