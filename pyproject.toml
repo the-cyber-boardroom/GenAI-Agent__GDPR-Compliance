@@ -1,0 +1,19 @@
+[tool.poetry]
+name        = "genai_agent_gdpr_compliance"
+version     = "v0.2.2"
+description = "GenAI-Agent__GDPR-Compliance"
+authors     = ["Dinis Cruz <dinis.cruz@owasp.org>"]
+license     = "Apache 2.0"
+readme      = "README.md"
+homepage    = "https://github.com/the-cyber-boardroom/GenAI-Agent__GDPR-Compliance"
+repository  = "https://github.com/the-cyber-boardroom/GenAI-Agent__GDPR-Compliance"
+
+[tool.poetry.dependencies]
+python            = "^3.12"
+osbot-utils       = "*"
+memory-fs         = "*"
+mgraph-db         = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
