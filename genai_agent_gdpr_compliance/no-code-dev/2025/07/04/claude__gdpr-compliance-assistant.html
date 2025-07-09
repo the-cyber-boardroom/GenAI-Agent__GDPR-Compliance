@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GDPR Compliance Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 1400px;
+            height: 90vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .chat-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .graph-panel {
+            width: 400px;
+            background: #f8fafc;
+            border-left: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .graph-panel-header {
+            background: #1e293b;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .graph-panel-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .graph-panel-header p {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .graph-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .graph-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            background: #e2e8f0;
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        .graph-tab {
+            flex: 1;
+            padding: 8px 12px;
+            text-align: center;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .graph-tab.active {
+            background: white;
+            color: #4f46e5;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .graph-tab:not(.active) {
+            color: #64748b;
+        }
+
+        .graph-view {
+            display: none;
+        }
+
+        .graph-view.active {
+            display: block;
+        }
+
+        .graph-node {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .graph-node.new {
+            animation: nodeAppear 0.5s ease-out;
+            border-color: #10b981;
+        }
+
+        @keyframes nodeAppear {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+                border-color: #10b981;
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .graph-node.persona {
+            border-color: #4f46e5;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+        }
+
+        .graph-node.industry {
+            border-color: #f59e0b;
+            background: #fef3c7;
+        }
+
+        .graph-node.compliance {
+            border-color: #10b981;
+            background: #ecfdf5;
+        }
+
+        .graph-node.metric {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .node-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .node-type {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .node-type.persona { background: rgba(255, 255, 255, 0.2); color: white; }
+        .node-type.industry { background: #f59e0b; color: white; }
+        .node-type.compliance { background: #10b981; color: white; }
+        .node-type.metric { background: #3b82f6; color: white; }
+        .node-type.answer { background: #64748b; color: white; }
+
+        .node-name {
+            font-weight: 600;
+            font-size: 14px;
+            line-height: 1.3;
+        }
+
+        .node-value {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .connections-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .connection-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #e2e8f0;
+            font-size: 14px;
+        }
+
+        .connection-arrow {
+            margin: 0 10px;
+            color: #64748b;
+            font-weight: bold;
+        }
+
+        .connection-relation {
+            font-size: 11px;
+            background: #f1f5f9;
+            color: #475569;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin: 0 8px;
+            font-weight: 500;
+        }
+
+        .tree-view {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+
+        .tree-node {
+            margin-left: 20px;
+            position: relative;
+        }
+
+        .tree-node:before {
+            content: '';
+            position: absolute;
+            left: -15px;
+            top: 0;
+            bottom: 50%;
+            width: 1px;
+            background: #475569;
+        }
+
+        .tree-node:after {
+            content: '';
+            position: absolute;
+            left: -15px;
+            top: 50%;
+            width: 10px;
+            height: 1px;
+            background: #475569;
+        }
+
+        .tree-root {
+            color: #60a5fa;
+            font-weight: bold;
+        }
+
+        .tree-type {
+            color: #34d399;
+        }
+
+        .tree-relation {
+            color: #fbbf24;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: #4f46e5;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                max-width: 800px;
+                height: auto;
+                min-height: 90vh;
+            }
+
+            .graph-panel {
+                width: 100%;
+                max-height: 300px;
+            }
+
+            .chat-section {
+                min-height: 500px;
+            }
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 15px 20px;
+            border-radius: 18px;
+            line-height: 1.5;
+            font-size: 15px;
+        }
+
+        .message.system {
+            background: #f3f4f6;
+            color: #374151;
+            align-self: flex-start;
+            border-bottom-left-radius: 6px;
+        }
+
+        .message.user {
+            background: #4f46e5;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 6px;
+        }
+
+        .message.guidance {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+            align-self: flex-start;
+            max-width: 95%;
+        }
+
+        .message.guidance h2 {
+            color: #047857;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 15px 0 10px 0;
+            border-bottom: 2px solid #10b981;
+            padding-bottom: 5px;
+        }
+
+        .message.guidance h3 {
+            color: #059669;
+            font-size: 16px;
+            font-weight: 500;
+            margin: 12px 0 8px 0;
+        }
+
+        .message.guidance ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .message.guidance li {
+            margin: 5px 0;
+            line-height: 1.5;
+        }
+
+        .message.guidance strong {
+            color: #047857;
+            font-weight: 600;
+        }
+
+        .message.guidance p {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+
+        .typing {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #6b7280;
+            font-style: italic;
+            align-self: flex-start;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 3px;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: #6b7280;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+
+        .input-container {
+            padding: 20px;
+            border-top: 1px solid #e5e7eb;
+            background: #f9fafb;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 20px;
+            font-size: 15px;
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+            font-family: inherit;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #4f46e5;
+        }
+
+        .send-button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .send-button:hover:not(:disabled) {
+            background: #4338ca;
+        }
+
+        .send-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .graph-summary {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+
+        .graph-summary h3 {
+            color: #92400e;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .graph-summary ul {
+            list-style: none;
+        }
+
+        .graph-summary li {
+            color: #78350f;
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .graph-summary li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .error {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .reset-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 100;
+            transition: all 0.2s;
+        }
+
+        .reset-button:hover {
+            background: #dc2626;
+        }
+
+        .reset-button.confirming {
+            background: #dc2626;
+        }
+
+        .debug-button {
+            position: fixed;
+            bottom: 70px;
+            right: 20px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="chat-section">
+            <div class="header">
+                <h1>GDPR Compliance Assistant</h1>
+                <p>I'll ask you a few questions to understand your GDPR practices and provide personalized guidance</p>
+            </div>
+
+            <div class="chat-container" id="chatContainer">
+                <div class="message system">
+                    Hi! I'm here to help assess your GDPR compliance practices. I'll ask you a series of questions to understand your current setup, and then provide some personalized guidance. Let's get started!
+                </div>
+            </div>
+
+            <div class="input-container">
+                <div class="input-row">
+                    <textarea
+                        class="input-field"
+                        id="userInput"
+                        placeholder="Type your answer here..."
+                        rows="1"
+                    ></textarea>
+                    <button class="send-button" id="sendButton">→</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="graph-panel">
+            <div class="graph-panel-header">
+                <h2>Knowledge Graph</h2>
+                <p>Your GDPR profile as it builds</p>
+            </div>
+
+            <div class="graph-content">
+                <div class="graph-tabs">
+                    <div class="graph-tab active" onclick="switchGraphView('visual')">Visual</div>
+                    <div class="graph-tab" onclick="switchGraphView('tree')">Tree</div>
+                    <div class="graph-tab" onclick="switchGraphView('connections')">Links</div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-number" id="nodeCount">1</span>
+                        <div class="stat-label">Nodes</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="edgeCount">0</span>
+                        <div class="stat-label">Connections</div>
+                    </div>
+                </div>
+
+                <div class="graph-view active" id="visualView">
+                    <div id="graphNodes">
+                        <div class="graph-node persona">
+                            <div class="node-header">
+                                <div class="node-type persona">Organization</div>
+                            </div>
+                            <div class="node-name">Your Organization</div>
+                            <div class="node-value">Starting point for assessment</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="graph-view" id="treeView">
+                    <div class="tree-view" id="treeContent">
+                        <div class="tree-root">🏢 Your Organization</div>
+                    </div>
+                </div>
+
+                <div class="graph-view" id="connectionsView">
+                    <div id="connectionsList">
+                        <div style="text-align: center; color: #64748b; padding: 20px;">
+                            No connections yet. Answer questions to build your graph!
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="reset-button" id="resetButton">Reset Assessment</button>
+    <button class="debug-button" id="debugButton">Debug State</button>
+
+    <script>
+        class GDPRAssistant {
+            constructor() {
+                console.log('🚀 GDPR Assistant starting up...');
+
+                // Try to load existing graph from localStorage
+                const savedGraph = localStorage.getItem('gdpr_graph');
+                const savedConversation = localStorage.getItem('gdpr_conversation');
+                const savedQuestionCount = localStorage.getItem('gdpr_question_count');
+                const savedPhase = localStorage.getItem('gdpr_phase');
+
+                if (savedGraph) {
+                    try {
+                        this.graph = JSON.parse(savedGraph);
+                        console.log('📊 Loaded existing graph from localStorage:');
+                        console.log('  - Nodes:', this.graph.nodes.length);
+                        console.log('  - Edges:', this.graph.edges.length);
+                    } catch (e) {
+                        console.warn('⚠️ Failed to parse saved graph, using default:', e);
+                        this.graph = {
+                            nodes: [
+                                { id: "persona", type: "Organization", name: "Your Organization" }
+                            ],
+                            edges: []
+                        };
+                    }
+                } else {
+                    console.log('📊 No saved graph found, creating new one');
+                    this.graph = {
+                        nodes: [
+                            { id: "persona", type: "Organization", name: "Your Organization" }
+                        ],
+                        edges: []
+                    };
+                }
+
+                // Restore conversation state
+                this.conversationHistory = savedConversation ? JSON.parse(savedConversation) : [];
+                this.questionCount = savedQuestionCount ? parseInt(savedQuestionCount) : 0;
+                this.phase = savedPhase || 'questioning';
+
+                console.log(`💬 Restored conversation state: ${this.conversationHistory.length} messages, question ${this.questionCount}, phase: ${this.phase}`);
+
+                this.maxQuestions = 10;
+
+                this.targetTopics = [
+                    "Industry",
+                    "Company Size",
+                    "Data Protection Officer",
+                    "Data Inventory",
+                    "Third-Party Data Sharing",
+                    "Breach Response",
+                    "Training",
+                    "Data Subject Requests",
+                    "Retention Policy",
+                    "Encryption"
+                ];
+
+                this.initializeUI();
+                this.restoreConversation();
+
+                // Always update the graph visualization on startup
+                this.updateGraphVisualization();
+
+                // If this is a fresh start, begin first question
+                if (this.conversationHistory.length === 0) {
+                    this.startFirstQuestion();
+                }
+            }
+
+            initializeUI() {
+                this.chatContainer = document.getElementById('chatContainer');
+                this.userInput = document.getElementById('userInput');
+                this.sendButton = document.getElementById('sendButton');
+
+                this.userInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.handleUserInput();
+                    }
+                });
+
+                this.sendButton.addEventListener('click', () => this.handleUserInput());
+
+                // Auto-resize textarea
+                this.userInput.addEventListener('input', () => {
+                    this.userInput.style.height = 'auto';
+                    this.userInput.style.height = this.userInput.scrollHeight + 'px';
+                });
+
+                // Reset button functionality
+                const resetButton = document.getElementById('resetButton');
+                resetButton.addEventListener('click', () => {
+                    if (resetButton.dataset.clicked) {
+                        console.log('🔄 Clearing localStorage and resetting...');
+                        try {
+                            localStorage.clear();
+                            console.log('✅ All localStorage data cleared');
+                            location.reload();
+                        } catch (error) {
+                            console.error('❌ Error clearing localStorage:', error);
+                            location.reload();
+                        }
+                    } else {
+                        resetButton.dataset.clicked = 'true';
+                        resetButton.textContent = 'Click Again to Reset';
+                        resetButton.classList.add('confirming');
+                        setTimeout(() => {
+                            resetButton.dataset.clicked = '';
+                            resetButton.textContent = 'Reset Assessment';
+                            resetButton.classList.remove('confirming');
+                        }, 3000);
+                    }
+                });
+
+                // Debug button functionality
+                const debugButton = document.getElementById('debugButton');
+                debugButton.addEventListener('click', () => {
+                    console.log('🐛 DEBUG STATE:');
+                    console.log('Graph:', this.graph);
+                    console.log('Conversation:', this.conversationHistory);
+                    console.log('Question Count:', this.questionCount);
+                    console.log('Phase:', this.phase);
+                    console.log('LocalStorage:');
+                    console.log('- gdpr_graph:', localStorage.getItem('gdpr_graph'));
+                    console.log('- gdpr_conversation:', localStorage.getItem('gdpr_conversation'));
+                    console.log('- gdpr_question_count:', localStorage.getItem('gdpr_question_count'));
+                    console.log('- gdpr_phase:', localStorage.getItem('gdpr_phase'));
+                });
+            }
+
+            saveState() {
+                console.log('💾 Saving state to localStorage...');
+                try {
+                    localStorage.setItem('gdpr_graph', JSON.stringify(this.graph));
+                    localStorage.setItem('gdpr_conversation', JSON.stringify(this.conversationHistory));
+                    localStorage.setItem('gdpr_question_count', this.questionCount.toString());
+                    localStorage.setItem('gdpr_phase', this.phase);
+                    console.log('✅ State saved successfully');
+                } catch (error) {
+                    console.error('❌ Failed to save state:', error);
+                }
+            }
+
+            restoreConversation() {
+                console.log('🔄 Restoring conversation...');
+                if (this.conversationHistory.length > 0) {
+                    this.conversationHistory.forEach((message, index) => {
+                        console.log(`📝 Restoring message ${index + 1}:`, {
+                            type: message.type,
+                            preview: message.content.substring(0, 50) + '...'
+                        });
+                        this.addMessage(message.content, message.type, false);
+                    });
+                    console.log(`✅ Restored ${this.conversationHistory.length} messages`);
+                }
+            }
+
+            async startFirstQuestion() {
+                console.log('🎯 Starting first question...');
+                const firstQuestion = "Let's start with the basics - what's your company name?";
+                this.addMessage(firstQuestion, 'system');
+            }
+
+            async handleUserInput() {
+                const answer = this.userInput.value.trim();
+                if (!answer) return;
+
+                console.log(`👤 User input (Question ${this.questionCount + 1}):`, answer);
+
+                this.addMessage(answer, 'user');
+                this.userInput.value = '';
+                this.userInput.style.height = 'auto';
+
+                this.setInputEnabled(false);
+
+                try {
+                    if (this.phase === 'questioning') {
+                        await this.processAnswer(answer);
+                    } else if (this.phase === 'confirmation') {
+                        await this.handleConfirmation(answer.toLowerCase());
+                    }
+                } catch (error) {
+                    console.error('❌ Error handling user input:', error);
+                    this.showError('Sorry, there was an error processing your response. Please try again.');
+                } finally {
+                    this.setInputEnabled(true);
+                }
+            }
+
+            async processAnswer(answer) {
+                console.log('🔄 Processing answer and updating graph...');
+                this.showTyping();
+
+                // Special handling for company name (first question)
+                if (this.questionCount === 0) {
+                    console.log('📝 Processing company name...');
+                    this.graph.nodes[0].name = answer;
+                    this.hideTyping();
+                    this.addMessage(`Nice to meet you, ${answer}! Now let me ask you some questions about your GDPR compliance practices.`, 'system');
+
+                    this.updateGraphVisualization();
+
+                    this.questionCount++;
+                    this.saveState();
+
+                    await this.generateNextQuestion();
+                    return;
+                }
+
+                // Regular processing for other questions
+                await this.updateGraph(answer);
+
+                this.questionCount++;
+                console.log(`📊 Question count updated to: ${this.questionCount}`);
+
+                this.saveState();
+
+                if (this.questionCount >= this.maxQuestions) {
+                    console.log('🏁 Reached maximum questions, moving to confirmation phase');
+                    this.hideTyping();
+                    await this.startConfirmation();
+                } else {
+                    console.log(`➡️ Generating question ${this.questionCount + 1} of ${this.maxQuestions}`);
+                    await this.generateNextQuestion();
+                }
+            }
+
+            async updateGraph(answer) {
+                console.log('📈 Updating knowledge graph with answer:', answer);
+
+                const prompt = `You are an AI that updates a JSON knowledge graph of a company's GDPR compliance based on new information. You will be given the current graph and the user's latest answer. Extract key facts from the answer and modify the graph JSON to include those facts as new nodes or edges.
+
+Current graph: ${JSON.stringify(this.graph)}
+
+User's answer: "${answer}"
+
+IMPORTANT: You must respond with ONLY valid JSON. Do not include any explanation, backticks, or other text. Start your response with { and end with }.
+
+Update the graph by adding relevant nodes and edges. For example:
+- If user mentions "retail" industry, add: {"id": "industry_retail", "type": "Industry", "name": "Retail"}
+- If user mentions employee count, add: {"id": "employee_count", "type": "Metric", "name": "50 employees", "value": 50}
+- Always connect new nodes to the persona node with appropriate edges
+
+Return the complete updated graph as valid JSON only:`;
+
+                try {
+                    console.log('🤖 Calling Claude API to update graph...');
+                    const response = await this.callClaude(prompt, 'graph_update');
+                    console.log('📥 Raw API response:', response);
+
+                    let cleanResponse = response.trim();
+
+                    if (cleanResponse.startsWith('```json')) {
+                        cleanResponse = cleanResponse.replace(/```json\s*/, '').replace(/```\s*$/, '');
+                    } else if (cleanResponse.startsWith('```')) {
+                        cleanResponse = cleanResponse.replace(/```\s*/, '').replace(/```\s*$/, '');
+                    }
+
+                    console.log('🧹 Cleaned response:', cleanResponse);
+
+                    const updatedGraph = JSON.parse(cleanResponse);
+                    console.log('✅ Successfully parsed updated graph:', updatedGraph);
+
+                    if (updatedGraph.nodes && Array.isArray(updatedGraph.nodes) &&
+                        updatedGraph.edges && Array.isArray(updatedGraph.edges)) {
+                        console.log('📊 Graph structure validated, updating...');
+
+                        this.graph = updatedGraph;
+                        this.updateGraphVisualization();
+                        console.log('✅ Graph updated and visualization refreshed');
+                    } else {
+                        throw new Error('Invalid graph structure');
+                    }
+
+                } catch (error) {
+                    console.error('❌ Error updating graph:', error);
+                    console.log('🛠️ Falling back to manual graph update...');
+
+                    this.fallbackGraphUpdate(answer);
+                }
+            }
+
+            fallbackGraphUpdate(answer) {
+                console.log('🛠️ Using fallback graph update for answer:', answer);
+
+                const answerId = `answer_${this.questionCount}`;
+                const newNode = {
+                    id: answerId,
+                    type: "Answer",
+                    name: answer.substring(0, 100),
+                    question_number: this.questionCount
+                };
+
+                console.log('📝 Adding fallback answer node:', newNode);
+                this.graph.nodes.push(newNode);
+                this.graph.edges.push({
+                    source: "persona",
+                    target: answerId,
+                    relation: "answered"
+                });
+
+                const lowerAnswer = answer.toLowerCase();
+                console.log('🔍 Analyzing answer for key information...');
+
+                if (lowerAnswer.includes('retail')) {
+                    console.log('🏪 Detected retail industry');
+                    this.graph.nodes.push({
+                        id: "industry_retail",
+                        type: "Industry",
+                        name: "Retail"
+                    });
+                    this.graph.edges.push({
+                        source: "persona",
+                        target: "industry_retail",
+                        relation: "industry"
+                    });
+                }
+
+                const employeeMatch = answer.match(/(\d+)\s*employees?/i);
+                if (employeeMatch) {
+                    console.log('👥 Detected employee count:', employeeMatch[1]);
+                    this.graph.nodes.push({
+                        id: "employee_count",
+                        type: "Metric",
+                        name: `${employeeMatch[1]} employees`,
+                        value: parseInt(employeeMatch[1])
+                    });
+                    this.graph.edges.push({
+                        source: "persona",
+                        target: "employee_count",
+                        relation: "has_metric"
+                    });
+                }
+
+                console.log('📊 Fallback update complete. New graph state:', this.graph);
+                this.updateGraphVisualization();
+            }
+
+            async generateNextQuestion() {
+                const remainingTopics = this.targetTopics.slice(this.questionCount - 1);
+                console.log(`🎯 Generating question ${this.questionCount + 1} of ${this.maxQuestions}`);
+                console.log('📋 Remaining topics:', remainingTopics);
+
+                const prompt = `You are a helpful assistant interviewing a user to assess their GDPR compliance practices. Your goal is to generate the next question to ask to gather missing information, based on what we already know. Always return the next question as a short, clear, and friendly question for the user, and nothing else.
+
+Current knowledge graph: ${JSON.stringify(this.graph)}
+
+Remaining topics to cover: ${remainingTopics.join(', ')}
+
+Question ${this.questionCount + 1} of ${this.maxQuestions}.
+
+Generate a friendly, conversational question about one of the remaining topics. Make it engaging and specific to GDPR compliance. Output only the question text:`;
+
+                try {
+                    this.hideTyping();
+                    this.showTyping();
+
+                    console.log('🤖 Calling Claude API for next question...');
+                    const question = await this.callClaude(prompt, 'question_generation');
+                    console.log('❓ Generated question:', question);
+
+                    this.hideTyping();
+                    this.addMessage(question, 'system');
+                } catch (error) {
+                    console.error('❌ Error generating question:', error);
+                    this.hideTyping();
+                    this.showError('Sorry, I had trouble generating the next question. Please refresh and try again.');
+                }
+            }
+
+            async startConfirmation() {
+                console.log('✅ Starting confirmation phase...');
+                this.phase = 'confirmation';
+                this.saveState();
+
+                const summary = this.generateGraphSummary();
+                console.log('📋 Generated summary:', summary);
+
+                const confirmationMessage = `
+                    <div class="graph-summary">
+                        <h3>Here's what I've learned about your GDPR setup:</h3>
+                        <ul>
+                            ${summary.map(item => `<li>${item}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <p>Is this information correct? Please type "yes" to continue or "no" if you'd like to make corrections.</p>
+                `;
+
+                this.addMessage(confirmationMessage, 'system');
+                this.userInput.placeholder = "Type 'yes' or 'no'...";
+            }
+
+            generateGraphSummary() {
+                const summary = [];
+
+                this.graph.nodes.forEach(node => {
+                    if (node.id !== 'persona') {
+                        if (node.type === 'Industry') {
+                            summary.push(`Your industry is ${node.name}`);
+                        } else if (node.type === 'Compliance') {
+                            summary.push(node.name + (node.value ? ': Yes' : ': No'));
+                        } else if (node.name) {
+                            summary.push(node.name);
+                        }
+                    }
+                });
+
+                this.graph.edges.forEach(edge => {
+                    const sourceNode = this.graph.nodes.find(n => n.id === edge.source);
+                    const targetNode = this.graph.nodes.find(n => n.id === edge.target);
+
+                    if (sourceNode && targetNode && edge.relation) {
+                        if (edge.relation === 'employee_count') {
+                            summary.push(`You have ${targetNode.name} employees`);
+                        }
+                    }
+                });
+
+                return summary.length > 0 ? summary : ['Information about your organization has been collected'];
+            }
+
+            async handleConfirmation(answer) {
+                console.log('🔄 Handling confirmation response:', answer);
+
+                if (answer.includes('yes') || answer === 'y') {
+                    console.log('✅ User confirmed information is correct');
+                    this.phase = 'complete';
+                    this.saveState();
+                    this.addMessage("Great! Now let me provide you with personalized GDPR guidance based on your responses.", 'system');
+                    await this.generateGuidance();
+                } else if (answer.includes('no') || answer === 'n') {
+                    console.log('❌ User wants to make corrections');
+                    this.addMessage("I understand you'd like to make corrections. For this demo, please refresh the page to start over. In a full version, you'd be able to edit specific responses.", 'system');
+                } else {
+                    console.log('❓ Unclear confirmation response');
+                    this.addMessage("Please respond with 'yes' if the information is correct, or 'no' if you'd like to make changes.", 'system');
+                }
+            }
+
+            async generateGuidance() {
+                console.log('📝 Generating personalized GDPR guidance...');
+                this.showTyping();
+
+                const graphSummary = this.generateGraphSummary();
+                console.log('📊 Using graph summary for guidance:', graphSummary);
+
+                const prompt = `You are an expert GDPR consultant AI. Given a structured profile of a company's GDPR compliance (below), provide a helpful set of recommendations and guidance using proper markdown formatting.
+
+The user's GDPR profile:
+${graphSummary.map(item => `- ${item}`).join('\n')}
+
+Full graph data: ${JSON.stringify(this.graph)}
+
+Format your response using markdown with the following structure:
+- Use ## for main sections (like "Current Strengths" and "Priority Actions")
+- Use **bold** for emphasis on key points
+- Use bullet points (-) for lists
+- Use numbered lists (1.) for step-by-step recommendations
+- Keep paragraphs concise and well-separated
+
+Address the user in a friendly, professional tone. Highlight areas that need improvement and commend good practices already in place. Make advice actionable and specific to their situation.
+
+Provide a well-structured GDPR guidance report:`;
+
+                try {
+                    console.log('🤖 Calling Claude API for guidance generation...');
+                    const guidance = await this.callClaude(prompt, 'guidance_generation');
+                    console.log('📋 Generated guidance:', guidance);
+
+                    this.hideTyping();
+
+                    const formattedGuidance = this.convertMarkdownToHTML(guidance);
+                    this.addMessage(formattedGuidance, 'guidance');
+                    this.addMessage("Thank you for using the GDPR Compliance Assistant! You can refresh the page to start a new assessment.", 'system');
+
+                    this.saveState();
+
+                    this.setInputEnabled(false);
+                    this.userInput.placeholder = "Assessment complete";
+                    console.log('🏁 Assessment completed successfully');
+                } catch (error) {
+                    console.error('❌ Error generating guidance:', error);
+                    this.hideTyping();
+                    this.showError('Sorry, I had trouble generating your guidance. Please try again.');
+                }
+            }
+
+            async callClaude(prompt, context) {
+                console.log(`🤖 Claude API call for ${context}:`);
+                console.log('📤 Prompt length:', prompt.length);
+
+                try {
+                    const startTime = Date.now();
+                    const response = await window.claude.complete(prompt);
+                    const endTime = Date.now();
+
+                    console.log(`📥 Claude API response for ${context} (${endTime - startTime}ms):`);
+                    console.log('📊 Response length:', response.length);
+
+                    return response;
+                } catch (error) {
+                    console.error(`❌ Claude API error for ${context}:`, error);
+                    throw error;
+                }
+            }
+
+            convertMarkdownToHTML(markdown) {
+                console.log('🎨 Converting markdown to HTML...');
+
+                let html = markdown
+                    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+                    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                    .replace(/^- (.*$)/gm, '<li>$1</li>')
+                    .replace(/^\d+\. (.*$)/gm, '<li>$1</li>')
+                    .replace(/\n\n/g, '</p><p>')
+                    .replace(/\n/g, '<br>');
+
+                html = html.replace(/(<li>.*?<\/li>)(\s*<li>.*?<\/li>)*/g, function(match) {
+                    return '<ul>' + match + '</ul>';
+                });
+
+                if (!html.startsWith('<h') && !html.startsWith('<ul') && !html.startsWith('<ol')) {
+                    html = '<p>' + html + '</p>';
+                }
+
+                html = html.replace(/<p><\/p>/g, '');
+
+                console.log('✅ Markdown converted to HTML');
+                return html;
+            }
+
+            addMessage(content, type, saveToHistory = true) {
+                console.log(`💬 Adding ${type} message:`, content.substring(0, 100) + (content.length > 100 ? '...' : ''));
+
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${type}`;
+                messageDiv.innerHTML = content;
+
+                this.chatContainer.appendChild(messageDiv);
+                this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
+
+                if (saveToHistory) {
+                    this.conversationHistory.push({
+                        content: content,
+                        type: type,
+                        timestamp: Date.now()
+                    });
+                    console.log(`💾 Message saved to history. Total messages: ${this.conversationHistory.length}`);
+                    this.saveState();
+                }
+            }
+
+            showTyping() {
+                const typingDiv = document.createElement('div');
+                typingDiv.className = 'typing';
+                typingDiv.id = 'typingIndicator';
+                typingDiv.innerHTML = `
+                    Assistant is thinking...
+                    <div class="typing-dots">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                `;
+
+                this.chatContainer.appendChild(typingDiv);
+                this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
+            }
+
+            hideTyping() {
+                const typingIndicator = document.getElementById('typingIndicator');
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+            }
+
+            setInputEnabled(enabled) {
+                this.userInput.disabled = !enabled;
+                this.sendButton.disabled = !enabled;
+
+                if (enabled) {
+                    this.userInput.focus();
+                }
+            }
+
+            updateGraphVisualization() {
+                console.log('🎨 Updating graph visualization...');
+                console.log('📊 Current graph state:', {
+                    nodes: this.graph.nodes.length,
+                    edges: this.graph.edges.length
+                });
+
+                this.updateNodeCounts();
+                this.updateVisualView();
+                this.updateTreeView();
+                this.updateConnectionsView();
+
+                console.log('✅ Graph visualization updated');
+            }
+
+            updateNodeCounts() {
+                document.getElementById('nodeCount').textContent = this.graph.nodes.length;
+                document.getElementById('edgeCount').textContent = this.graph.edges.length;
+            }
+
+            updateVisualView() {
+                const container = document.getElementById('graphNodes');
+
+                const existingNodes = container.querySelectorAll('.graph-node:not(.persona)');
+                const existingNodeIds = Array.from(existingNodes).map(node => node.dataset.nodeId);
+
+                this.graph.nodes.forEach(node => {
+                    if (node.id === 'persona' || existingNodeIds.includes(node.id)) return;
+
+                    const nodeElement = document.createElement('div');
+                    nodeElement.className = `graph-node ${node.type.toLowerCase()} new`;
+                    nodeElement.dataset.nodeId = node.id;
+
+                    const typeClass = node.type.toLowerCase();
+                    const icon = this.getNodeIcon(node.type);
+
+                    nodeElement.innerHTML = `
+                        <div class="node-header">
+                            <div class="node-type ${typeClass}">${icon} ${node.type}</div>
+                        </div>
+                        <div class="node-name">${node.name}</div>
+                        ${node.value ? `<div class="node-value">${node.value}</div>` : ''}
+                    `;
+
+                    container.appendChild(nodeElement);
+
+                    setTimeout(() => {
+                        nodeElement.classList.remove('new');
+                    }, 500);
+                });
+            }
+
+            updateTreeView() {
+                const container = document.getElementById('treeContent');
+                let treeHTML = '<div class="tree-root">🏢 Your Organization</div>';
+
+                this.graph.nodes.forEach(node => {
+                    if (node.id === 'persona') return;
+
+                    const icon = this.getNodeIcon(node.type);
+                    treeHTML += `
+                        <div class="tree-node">
+                            ├── <span class="tree-type">${icon} ${node.type}:</span> ${node.name}
+                            ${node.value ? `<br>    └── Value: ${node.value}` : ''}
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = treeHTML;
+            }
+
+            updateConnectionsView() {
+                const container = document.getElementById('connectionsList');
+                console.log('🔗 Updating connections view with', this.graph.edges.length, 'edges');
+
+                if (this.graph.edges.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; color: #64748b; padding: 20px;">
+                            No connections yet. Answer questions to build your graph!
+                        </div>
+                    `;
+                    return;
+                }
+
+                let connectionsHTML = '';
+
+                this.graph.edges.forEach((edge, index) => {
+                    const sourceNode = this.graph.nodes.find(n => n.id === edge.source);
+                    const targetNode = this.graph.nodes.find(n => n.id === edge.target);
+
+                    if (sourceNode && targetNode) {
+                        const relationLabels = {
+                            'operates_in': 'operates in',
+                            'has_employee_count': 'has',
+                            'dpo_status': 'DPO status',
+                            'data_inventory_status': 'data inventory',
+                            'training_status': 'training',
+                            'uses_service': 'uses',
+                            'breach_response_status': 'breach response',
+                            'encryption_status': 'encryption',
+                            'retention_policy_status': 'retention policy',
+                            'shares_data_with': 'shares data with',
+                            'answered': 'answered',
+                            'industry': 'operates in',
+                            'has_metric': 'has',
+                            'connected_to': 'related to'
+                        };
+
+                        const relationText = relationLabels[edge.relation] || edge.relation || 'connected to';
+                        const connectionHTML = `
+                            <div class="connection-item">
+                                ${sourceNode.name || sourceNode.type}
+                                <span class="connection-arrow">→</span>
+                                <span class="connection-relation">${relationText}</span>
+                                <span class="connection-arrow">→</span>
+                                ${targetNode.name || targetNode.type}
+                            </div>
+                        `;
+                        connectionsHTML += connectionHTML;
+                    }
+                });
+
+                container.innerHTML = connectionsHTML;
+            }
+
+            getNodeIcon(type) {
+                const icons = {
+                    'Industry': '🏭',
+                    'Compliance': '✅',
+                    'Metric': '📊',
+                    'Answer': '💬',
+                    'Organization': '🏢',
+                    'Role': '👤',
+                    'Process': '⚙️',
+                    'Data': '📄'
+                };
+                return icons[type] || '📋';
+            }
+
+            showError(message) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error';
+                errorDiv.textContent = message;
+
+                this.chatContainer.appendChild(errorDiv);
+                this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
+
+                setTimeout(() => {
+                    if (errorDiv.parentNode) {
+                        errorDiv.parentNode.removeChild(errorDiv);
+                    }
+                }, 5000);
+            }
+        }
+
+        // Global functions for UI interactions
+        function switchGraphView(viewName) {
+            document.querySelectorAll('.graph-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            document.querySelectorAll('.graph-view').forEach(view => {
+                view.classList.remove('active');
+            });
+
+            const targetView = viewName + 'View';
+            document.getElementById(targetView).classList.add('active');
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🌟 DOM loaded, initializing GDPR Assistant...');
+            window.assistant = new GDPRAssistant();
+            console.log('✅ GDPR Assistant initialized successfully');
+        });
+    </script>
+</body>
+</html>
