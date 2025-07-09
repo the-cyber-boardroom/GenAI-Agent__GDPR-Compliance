@@ -17,9 +17,14 @@ class test_AWS__Setup__GDPR_Compliance(TestCase):
     def test_aws__configured(self):
         assert self.aws_setup.aws__configured() is True
 
-    def test_s3_bucket_name(self):
+    def test_s3__bucket_name(self):
         assert self.aws_setup.s3__bucket__name() == "gdpr-compliance--654654216424--eu-west-1"
 
-    def test_s3_bucket__exists(self):
+    def test_s3__bucket__exists(self):
         with self.aws_setup as _:
-            assert _.s3__bucket__exists() is False
+            assert _.s3__bucket__exists() is True
+
+    def test_s3__bucket__setup(self):
+        with self.aws_setup as _:
+            assert _.s3__bucket__setup() == {'bucket__exists': True ,
+                                             'bucket_created': False}

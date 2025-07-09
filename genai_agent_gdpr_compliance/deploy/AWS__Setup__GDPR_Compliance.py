@@ -31,3 +31,18 @@ class AWS__Setup__GDPR_Compliance(Type_Safe):
 
     def s3__bucket__exists(self):
         return self.s3().bucket_exists(self.s3__bucket__name())
+
+    def s3__bucket__setup(self):
+        bucket_exists  = self.s3__bucket__exists()
+        bucket_created = False
+        if bucket_exists is False:
+            bucket_name = self.s3__bucket__name()
+            region_name = self.aws__region_name()
+            result      = self.s3().bucket_create(bucket=bucket_name, region=region_name)
+            if result.get('status') == 'ok':
+                bucket_exists  = True
+                bucket_created = True
+
+        result = dict(bucket_created =  bucket_created,               # this will only be true the one time the bucket is created
+                      bucket__exists = bucket_exists  )
+        return result
