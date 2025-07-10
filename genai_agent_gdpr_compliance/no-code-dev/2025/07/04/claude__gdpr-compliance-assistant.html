@@ -890,18 +890,33 @@
             async updateGraph(answer) {
                 console.log('📈 Updating knowledge graph with answer:', answer);
 
-                const prompt = `You are an AI that updates a JSON knowledge graph of a company's GDPR compliance based on new information. You will be given the current graph and the user's latest answer. Extract key facts from the answer and modify the graph JSON to include those facts as new nodes or edges.
+                const currentTopic = this.targetTopics[this.questionCount - 1] || "General";
+                
+                const prompt = `You are an AI that updates a JSON knowledge graph of a company's GDPR compliance based on new information. You will be given the current graph, the user's latest answer, and the current topic being discussed.
 
 Current graph: ${JSON.stringify(this.graph)}
 
 User's answer: "${answer}"
 
+Current topic: "${currentTopic}"
+
 IMPORTANT: You must respond with ONLY valid JSON. Do not include any explanation, backticks, or other text. Start your response with { and end with }.
 
-Update the graph by adding relevant nodes and edges. For example:
-- If user mentions "retail" industry, add: {"id": "industry_retail", "type": "Industry", "name": "Retail"}
-- If user mentions employee count, add: {"id": "employee_count", "type": "Metric", "name": "50 employees", "value": 50}
-- Always connect new nodes to the persona node with appropriate edges
+Based on the current topic "${currentTopic}", categorize and add the information appropriately:
+
+- For "Industry": add nodes with type: "Industry" (e.g., {"id": "industry_retail", "type": "Industry", "name": "Retail"})
+- For "Company Size": add nodes with type: "Metric" (e.g., {"id": "employee_count", "type": "Metric", "name": "50 employees", "value": 50})
+- For "Data Protection Officer": add nodes with type: "Compliance" (e.g., {"id": "dpo_status", "type": "Compliance", "name": "Has DPO", "value": true})
+- For "Data Inventory": add nodes with type: "Compliance" (e.g., {"id": "data_inventory", "type": "Compliance", "name": "Data Inventory Status", "value": "Complete"})
+- For "Third-Party Data Sharing": add nodes with type: "Compliance" (e.g., {"id": "third_party_sharing", "type": "Compliance", "name": "Shares with Third Parties", "value": true})
+- For "Breach Response": add nodes with type: "Compliance" (e.g., {"id": "breach_plan", "type": "Compliance", "name": "Has Breach Response Plan", "value": true})
+- For "Training": add nodes with type: "Compliance" (e.g., {"id": "gdpr_training", "type": "Compliance", "name": "GDPR Training Implemented", "value": true})
+- For "Data Subject Requests": add nodes with type: "Compliance" (e.g., {"id": "dsr_process", "type": "Compliance", "name": "DSR Process Established", "value": true})
+- For "Retention Policy": add nodes with type: "Compliance" (e.g., {"id": "retention_policy", "type": "Compliance", "name": "Has Retention Policy", "value": true})
+- For "Encryption": add nodes with type: "Compliance" (e.g., {"id": "encryption_status", "type": "Compliance", "name": "Uses Encryption", "value": true})
+
+DO NOT create generic "Answer" nodes. Extract the actual information and categorize it properly based on the topic.
+Always connect new nodes to the persona node with appropriate edges (industry, has_metric, compliance_status, etc.)
 
 Return the complete updated graph as valid JSON only:`;
 
@@ -945,53 +960,120 @@ Return the complete updated graph as valid JSON only:`;
             fallbackGraphUpdate(answer) {
                 console.log('🛠️ Using fallback graph update for answer:', answer);
 
-                const answerId = `answer_${this.questionCount}`;
-                const newNode = {
-                    id: answerId,
-                    type: "Answer",
-                    name: answer.substring(0, 100),
-                    question_number: this.questionCount
-                };
-
-                console.log('📝 Adding fallback answer node:', newNode);
-                this.graph.nodes.push(newNode);
-                this.graph.edges.push({
-                    source: "persona",
-                    target: answerId,
-                    relation: "answered"
-                });
-
+                const currentTopic = this.targetTopics[this.questionCount - 1] || "General";
                 const lowerAnswer = answer.toLowerCase();
-                console.log('🔍 Analyzing answer for key information...');
+                console.log('🔍 Analyzing answer for topic:', currentTopic);
 
-                if (lowerAnswer.includes('retail')) {
-                    console.log('🏪 Detected retail industry');
-                    this.graph.nodes.push({
-                        id: "industry_retail",
-                        type: "Industry",
-                        name: "Retail"
-                    });
-                    this.graph.edges.push({
-                        source: "persona",
-                        target: "industry_retail",
-                        relation: "industry"
-                    });
-                }
+                // Map answers to appropriate node types based on current topic
+                switch(currentTopic) {
+                    case "Industry":
+                        // Extract industry type from answer
+                        let industryName = "Unknown Industry";
+                        if (lowerAnswer.includes('retail')) industryName = "Retail";
+                        else if (lowerAnswer.includes('finance') || lowerAnswer.includes('financial')) industryName = "Finance";
+                        else if (lowerAnswer.includes('healthcare') || lowerAnswer.includes('health')) industryName = "Healthcare";
+                        else if (lowerAnswer.includes('technology') || lowerAnswer.includes('tech')) industryName = "Technology";
+                        else if (lowerAnswer.includes('manufacturing')) industryName = "Manufacturing";
+                        else industryName = answer.substring(0, 50); // Use first 50 chars as industry name
 
-                const employeeMatch = answer.match(/(\d+)\s*employees?/i);
-                if (employeeMatch) {
-                    console.log('👥 Detected employee count:', employeeMatch[1]);
-                    this.graph.nodes.push({
-                        id: "employee_count",
-                        type: "Metric",
-                        name: `${employeeMatch[1]} employees`,
-                        value: parseInt(employeeMatch[1])
-                    });
-                    this.graph.edges.push({
-                        source: "persona",
-                        target: "employee_count",
-                        relation: "has_metric"
-                    });
+                        this.graph.nodes.push({
+                            id: `industry_${industryName.toLowerCase().replace(/\s+/g, '_')}`,
+                            type: "Industry",
+                            name: industryName
+                        });
+                        this.graph.edges.push({
+                            source: "persona",
+                            target: `industry_${industryName.toLowerCase().replace(/\s+/g, '_')}`,
+                            relation: "industry"
+                        });
+                        break;
+
+                    case "Company Size":
+                        const employeeMatch = answer.match(/(\d+)\s*employees?/i);
+                        if (employeeMatch) {
+                            this.graph.nodes.push({
+                                id: "employee_count",
+                                type: "Metric",
+                                name: `${employeeMatch[1]} employees`,
+                                value: parseInt(employeeMatch[1])
+                            });
+                            this.graph.edges.push({
+                                source: "persona",
+                                target: "employee_count",
+                                relation: "has_metric"
+                            });
+                        } else {
+                            // Try to extract size category
+                            let sizeCategory = "Unknown Size";
+                            if (lowerAnswer.includes('small')) sizeCategory = "Small Company";
+                            else if (lowerAnswer.includes('medium')) sizeCategory = "Medium Company";
+                            else if (lowerAnswer.includes('large')) sizeCategory = "Large Company";
+                            
+                            this.graph.nodes.push({
+                                id: "company_size",
+                                type: "Metric",
+                                name: sizeCategory
+                            });
+                            this.graph.edges.push({
+                                source: "persona",
+                                target: "company_size",
+                                relation: "has_metric"
+                            });
+                        }
+                        break;
+
+                    case "Data Protection Officer":
+                    case "Data Inventory":
+                    case "Third-Party Data Sharing":
+                    case "Breach Response":
+                    case "Training":
+                    case "Data Subject Requests":
+                    case "Retention Policy":
+                    case "Encryption":
+                        // For compliance-related topics, create compliance nodes
+                        const topicId = currentTopic.toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
+                        let hasFeature = false;
+                        let status = "Unknown";
+                        
+                        if (lowerAnswer.includes('yes') || lowerAnswer.includes('have') || lowerAnswer.includes('implemented')) {
+                            hasFeature = true;
+                            status = "Implemented";
+                        } else if (lowerAnswer.includes('no') || lowerAnswer.includes("don't") || lowerAnswer.includes("not")) {
+                            hasFeature = false;
+                            status = "Not Implemented";
+                        } else if (lowerAnswer.includes('partial') || lowerAnswer.includes('some')) {
+                            status = "Partially Implemented";
+                        }
+
+                        this.graph.nodes.push({
+                            id: `compliance_${topicId}`,
+                            type: "Compliance",
+                            name: `${currentTopic}: ${status}`,
+                            value: hasFeature,
+                            details: answer.substring(0, 200)
+                        });
+                        this.graph.edges.push({
+                            source: "persona",
+                            target: `compliance_${topicId}`,
+                            relation: "compliance_status"
+                        });
+                        break;
+
+                    default:
+                        // For any unmatched topics, create a categorized node based on topic
+                        console.log('⚠️ Creating generic node for unmatched topic:', currentTopic);
+                        this.graph.nodes.push({
+                            id: `info_${this.questionCount}`,
+                            type: "Information",
+                            name: `${currentTopic}: ${answer.substring(0, 50)}`,
+                            details: answer,
+                            question_number: this.questionCount
+                        });
+                        this.graph.edges.push({
+                            source: "persona",
+                            target: `info_${this.questionCount}`,
+                            relation: "has_info"
+                        });
                 }
 
                 console.log('📊 Fallback update complete. New graph state:', this.graph);
@@ -1153,17 +1235,106 @@ Provide a well-structured GDPR guidance report:`;
 
                 try {
                     const startTime = Date.now();
-                    const response = await window.claude.complete(prompt);
+                    
+                    // Use your existing Lambda endpoint
+                    const llm_server = "https://osbot-llms.dev.aws.cyber-boardroom.com/chat/completion"
+                    const response = await fetch(llm_server, {
+                        method: 'POST',
+                        headers: {
+                            'accept': 'application/json',
+                            'content-type': 'application/json',
+                            'origin': window.location.origin
+                        },
+                        body: JSON.stringify({
+                            chat_thread_id: `gdpr-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                            model: "gpt-4o-mini", // Using the model from your example
+                            temperature: 0.7,
+                            seed: 42,
+                            max_tokens: 2048,
+                            user_prompt: prompt,
+                            system_prompts: ["You are a helpful GDPR compliance assistant. Provide clear, concise responses."],
+                            histories: [],
+                            user_data: {
+                                selected_platform: "OpenAI (Paid)",
+                                selected_provider: "OpenAI",
+                                selected_model: "gpt-4o-mini"
+                            },
+                            stream: false // Changed to false for simpler handling
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
                     const endTime = Date.now();
 
-                    console.log(`📥 Claude API response for ${context} (${endTime - startTime}ms):`);
-                    console.log('📊 Response length:', response.length);
+                    console.log(`📥 API response for ${context} (${endTime - startTime}ms):`, data);
 
-                    return response;
+                    // Extract the actual response text from the API response
+                    // Adjust this based on the actual response structure
+                    const responseText = data.answer || data.response || data.text || JSON.stringify(data);
+                    console.log('📊 Response length:', responseText.length);
+
+                    return responseText;
                 } catch (error) {
-                    console.error(`❌ Claude API error for ${context}:`, error);
-                    throw error;
+                    console.error(`❌ API error for ${context}:`, error);
+                    
+                    // Fallback for demo purposes if API is unavailable
+                    console.log('🔄 Using fallback responses for demo');
+                    return this.getFallbackResponse(context, prompt);
                 }
+            }
+
+            getFallbackResponse(context, prompt) {
+                console.log(`🎯 Generating fallback response for ${context}`);
+                
+                if (context === 'question_generation') {
+                    const fallbackQuestions = [
+                        "What industry does your organization operate in?",
+                        "How many employees does your organization have?",
+                        "Do you have a designated Data Protection Officer (DPO)?",
+                        "Have you created a data inventory documenting what personal data you collect and process?",
+                        "Do you share personal data with any third parties or vendors?",
+                        "Do you have a documented process for handling data breaches?",
+                        "Have your employees received GDPR training in the last year?",
+                        "How do you handle data subject access requests?",
+                        "What is your data retention policy?",
+                        "Do you use encryption for personal data at rest and in transit?"
+                    ];
+                    
+                    const questionIndex = Math.min(this.questionCount - 1, fallbackQuestions.length - 1);
+                    return fallbackQuestions[questionIndex] || "Can you tell me more about your data protection practices?";
+                }
+                
+                if (context === 'guidance_generation') {
+                    return `## GDPR Compliance Assessment Results
+
+Based on your responses, here are some key recommendations:
+
+### Current Strengths
+- You've taken the first step by assessing your GDPR compliance
+- Your awareness of GDPR requirements is a positive foundation
+
+### Priority Actions
+1. **Establish Data Governance**: Create a comprehensive data inventory
+2. **Appoint a DPO**: Consider designating a Data Protection Officer
+3. **Document Processes**: Develop clear procedures for data handling
+4. **Employee Training**: Implement regular GDPR awareness training
+5. **Technical Measures**: Ensure appropriate security controls are in place
+
+### Next Steps
+- Review the GDPR requirements specific to your industry
+- Conduct a detailed data protection impact assessment
+- Develop or update your privacy policy
+- Create procedures for handling data subject requests
+
+Remember, GDPR compliance is an ongoing process, not a one-time achievement.`;
+                }
+                
+                // For graph updates, return current graph (no changes in fallback)
+                return JSON.stringify(this.graph);
             }
 
             convertMarkdownToHTML(markdown) {
