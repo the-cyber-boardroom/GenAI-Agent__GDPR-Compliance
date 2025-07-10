@@ -849,8 +849,78 @@
                 }
             }
 
+            isUserAskingClarification(answer) {
+                const lowerAnswer = answer.toLowerCase();
+                // Check for question patterns
+                const questionPatterns = [
+                    /\?$/,  // Ends with question mark
+                    /^what\s+(is|does|do|are|mean)/i,  // What is/does/do/are/mean...
+                    /^how\s+(do|does|can|should)/i,     // How do/does/can/should...
+                    /^why\s+(do|does|is|should)/i,      // Why do/does/is/should...
+                    /^can\s+you\s+explain/i,             // Can you explain...
+                    /^(explain|clarify|define)/i,       // Explain/clarify/define...
+                    /what.*mean/i,                       // What does X mean
+                    /don't\s+understand/i,              // I don't understand
+                    /not\s+sure\s+what/i                // Not sure what...
+                ];
+                
+                return questionPatterns.some(pattern => pattern.test(answer));
+            }
+
+            async handleClarificationRequest(answer) {
+                console.log('❓ User is asking for clarification:', answer);
+                this.hideTyping();
+                
+                const currentTopic = this.targetTopics[this.questionCount - 1] || "General";
+                
+                // Provide clarification based on the current topic
+                let clarification = "";
+                
+                if (answer.toLowerCase().includes('dpo')) {
+                    clarification = "A Data Protection Officer (DPO) is a person designated within your organization who is responsible for overseeing GDPR compliance. They monitor internal compliance, provide advice on data protection impact assessments, act as a contact point for data subjects and supervisory authorities, and ensure your organization follows GDPR requirements. Having a DPO is mandatory for certain organizations, especially those processing data on a large scale.";
+                } else if (currentTopic === "Industry") {
+                    clarification = "I'm asking about your company's industry sector (like retail, healthcare, finance, technology, etc.) because different industries have different GDPR requirements and risks. For example, healthcare organizations handle sensitive health data, while retail companies might process payment information.";
+                } else if (currentTopic === "Company Size") {
+                    clarification = "I need to know your organization's size and how many employees handle personal data because GDPR requirements can vary based on scale. Smaller organizations may have different obligations than larger ones. Please provide the total number of employees or an estimate.";
+                } else if (currentTopic === "Data Inventory") {
+                    clarification = "A data inventory (or data map) is a comprehensive record of what personal data your organization collects, where it's stored, how it's processed, who has access to it, and how long you keep it. It's a fundamental requirement for GDPR compliance.";
+                } else if (currentTopic === "Third-Party Data Sharing") {
+                    clarification = "This refers to whether you share personal data with external organizations like vendors, partners, or service providers. Under GDPR, you need specific agreements and safeguards when sharing data with third parties.";
+                } else if (currentTopic === "Breach Response") {
+                    clarification = "A data breach response plan outlines the steps your organization will take if personal data is accidentally or unlawfully accessed, disclosed, or lost. GDPR requires notifying authorities within 72 hours of becoming aware of a breach.";
+                } else if (currentTopic === "Training") {
+                    clarification = "GDPR training ensures your employees understand data protection principles, their responsibilities, and how to handle personal data properly. Regular training helps prevent breaches and demonstrates compliance efforts.";
+                } else if (currentTopic === "Data Subject Requests") {
+                    clarification = "Data subjects (individuals whose data you process) have rights under GDPR, including access to their data, correction, deletion, and portability. You need processes to handle these requests within the required timeframes.";
+                } else if (currentTopic === "Retention Policy") {
+                    clarification = "A data retention policy defines how long you keep different types of personal data and when you delete it. GDPR requires you to not keep data longer than necessary for its original purpose.";
+                } else if (currentTopic === "Encryption") {
+                    clarification = "Encryption is a security measure that converts data into a coded format to prevent unauthorized access. While not always mandatory under GDPR, it's considered a best practice for protecting personal data, especially sensitive information.";
+                } else {
+                    clarification = "I'd be happy to clarify! Could you please let me know which specific term or concept you'd like me to explain?";
+                }
+                
+                this.addMessage(clarification, 'system');
+                
+                // Re-ask the same question after a short delay
+                setTimeout(() => {
+                    const lastQuestion = this.messages[this.messages.length - 2];
+                    if (lastQuestion && lastQuestion.role === 'system') {
+                        this.addMessage("Let me ask the question again:", 'system');
+                        this.addMessage(lastQuestion.content, 'system');
+                    }
+                }, 1000);
+            }
+
             async processAnswer(answer) {
                 console.log('🔄 Processing answer and updating graph...');
+                
+                // Check if user is asking for clarification
+                if (this.isUserAskingClarification(answer)) {
+                    await this.handleClarificationRequest(answer);
+                    return; // Don't increment question count or update graph
+                }
+                
                 this.showTyping();
 
                 // Special handling for company name (first question)
@@ -989,7 +1059,8 @@ Return the complete updated graph as valid JSON only:`;
                         break;
 
                     case "Company Size":
-                        const employeeMatch = answer.match(/(\d+)\s*employees?/i);
+                        // Match patterns like "1000", "1000 employees", "we have 1000 employees"
+                        const employeeMatch = answer.match(/(\d+)(?:\s*employees?)?/i);
                         if (employeeMatch) {
                             this.graph.nodes.push({
                                 id: "employee_count",
