@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GDPR Compliance Assistant</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -350,6 +351,88 @@
             border-radius: 18px;
             line-height: 1.5;
             font-size: 15px;
+        }
+
+        /* Markdown styles within messages */
+        .message h1, .message h2, .message h3, .message h4, .message h5, .message h6 {
+            margin-top: 16px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .message h1 { font-size: 1.5em; }
+        .message h2 { font-size: 1.3em; }
+        .message h3 { font-size: 1.1em; }
+
+        .message p {
+            margin-bottom: 10px;
+        }
+
+        .message p:last-child {
+            margin-bottom: 0;
+        }
+
+        .message ul, .message ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .message li {
+            margin-bottom: 5px;
+        }
+
+        .message code {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 0.9em;
+            font-family: 'Courier New', monospace;
+        }
+
+        .message.user code {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .message pre {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+
+        .message.user pre {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .message strong {
+            font-weight: 600;
+        }
+
+        .message em {
+            font-style: italic;
+        }
+
+        .message blockquote {
+            border-left: 4px solid #e5e7eb;
+            padding-left: 16px;
+            margin: 10px 0;
+            color: #6b7280;
+        }
+
+        .message a {
+            color: #4f46e5;
+            text-decoration: underline;
+        }
+
+        .message.user a {
+            color: #ddd6fe;
+        }
+
+        .message hr {
+            border: none;
+            border-top: 1px solid #e5e7eb;
+            margin: 16px 0;
         }
 
         .message.system {
@@ -1191,15 +1274,11 @@ Generate a friendly, conversational question about one of the remaining topics. 
                 const summary = this.generateGraphSummary();
                 console.log('📋 Generated summary:', summary);
 
-                const confirmationMessage = `
-                    <div class="graph-summary">
-                        <h3>Here's what I've learned about your GDPR setup:</h3>
-                        <ul>
-                            ${summary.map(item => `<li>${item}</li>`).join('')}
-                        </ul>
-                    </div>
-                    <p>Is this information correct? Please type "yes" to continue or "no" if you'd like to make corrections.</p>
-                `;
+                const confirmationMessage = `### Here's what I've learned about your GDPR setup:
+
+${summary.map(item => `- ${item}`).join('\n')}
+
+Is this information correct? Please type "yes" to continue or "no" if you'd like to make corrections.`;
 
                 this.addMessage(confirmationMessage, 'system');
                 this.userInput.placeholder = "Type 'yes' or 'no'...";
@@ -1284,8 +1363,7 @@ Provide a well-structured GDPR guidance report:`;
 
                     this.hideTyping();
 
-                    const formattedGuidance = this.convertMarkdownToHTML(guidance);
-                    this.addMessage(formattedGuidance, 'guidance');
+                    this.addMessage(guidance, 'guidance');
                     this.addMessage("Thank you for using the GDPR Compliance Assistant! You can refresh the page to start a new assessment.", 'system');
 
                     this.saveState();
@@ -1345,7 +1423,17 @@ Provide a well-structured GDPR guidance report:`;
 
                     // Extract the actual response text from the API response
                     // Adjust this based on the actual response structure
-                    const responseText = data.answer || data.response || data.text || JSON.stringify(data);
+                    let responseText = data.answer || data.response || data.text || data.message || data.content;
+                    
+                    // If responseText is still not found and data is a string, use it directly
+                    if (!responseText && typeof data === 'string') {
+                        responseText = data;
+                    } else if (!responseText) {
+                        // Last resort - stringify the data
+                        console.warn('⚠️ Unexpected API response structure, stringifying:', data);
+                        responseText = JSON.stringify(data);
+                    }
+                    
                     console.log('📊 Response length:', responseText.length);
 
                     return responseText;
@@ -1440,7 +1528,27 @@ Remember, GDPR compliance is an ongoing process, not a one-time achievement.`;
 
                 const messageDiv = document.createElement('div');
                 messageDiv.className = `message ${type}`;
-                messageDiv.innerHTML = content;
+                
+                // Check if content contains HTML tags (legacy messages)
+                const hasHtmlTags = /<[^>]+>/.test(content);
+                
+                if (hasHtmlTags && content.includes('<div') && content.includes('</div>')) {
+                    // This is likely a legacy HTML message, use it directly
+                    messageDiv.innerHTML = content;
+                } else {
+                    // This is markdown or plain text, parse it with marked.js
+                    try {
+                        // Check if content has escaped newlines and unescape them
+                        let unescapedContent = content;
+                        if (content.includes('\\n')) {
+                            unescapedContent = content.replace(/\\n/g, '\n');
+                        }
+                        messageDiv.innerHTML = marked.parse(unescapedContent);
+                    } catch (error) {
+                        console.warn('Failed to parse markdown, using plain text:', error);
+                        messageDiv.textContent = content;
+                    }
+                }
 
                 this.chatContainer.appendChild(messageDiv);
                 this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
